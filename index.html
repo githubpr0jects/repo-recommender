@@ -1,0 +1,864 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoScout Auto - Specific Taglines</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--card-shadow);
+        }
+
+        .filter-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .filter-panel.open {
+            right: 0;
+        }
+
+        .filter-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .filter-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .repo-card {
+            transition: all 0.3s ease;
+        }
+
+        .repo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .tag {
+            background: #e5e7eb;
+            color: #374151;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .specific-tagline {
+            font-style: italic;
+            color: #059669;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .filter-panel {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        select, input[type="range"] {
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #374151;
+        }
+
+        select option {
+            background: white;
+            color: #374151;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                <i class="fas fa-code-branch text-yellow-300"></i>
+                RepoScout Auto
+            </h1>
+            <p class="text-xl text-gray-200 mb-6">Specific, concrete repository recommendations that tell you exactly what each project does</p>
+            
+            <div class="flex justify-center gap-4 flex-wrap">
+                <button id="nextRepoBtn" class="btn-primary px-6 py-3 rounded-lg font-semibold shadow-lg">
+                    <i class="fas fa-random mr-2"></i>Get Next Repository
+                </button>
+                <button id="filterBtn" class="bg-white text-gray-800 px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-gray-50">
+                    <i class="fas fa-filter mr-2"></i>Advanced Search
+                </button>
+                <button id="bookmarkBtn" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:bg-yellow-600">
+                    <i class="fas fa-bookmark mr-2"></i>Bookmarks (<span id="bookmarkCount">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="glass-card rounded-lg p-6 mb-8">
+            <div class="flex items-center justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-4"></div>
+                <p class="text-gray-700">Loading specific repository recommendation...</p>
+            </div>
+        </div>
+
+        <!-- Repository Grid -->
+        <div id="repoGrid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            <!-- Repository cards will be inserted here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div class="text-center mt-8">
+            <button id="loadMoreBtn" class="btn-primary px-8 py-3 rounded-lg font-semibold shadow-lg hidden">
+                <i class="fas fa-plus mr-2"></i>Load More Repositories
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Overlay -->
+    <div id="filterOverlay" class="filter-overlay"></div>
+
+    <!-- Filter Panel -->
+    <div id="filterPanel" class="filter-panel">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Advanced Search</h3>
+                <button id="closeFilterBtn" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="filterForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Programming Language</label>
+                    <select id="languageFilter" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">All Languages</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="cpp">C++</option>
+                        <option value="swift">Swift</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="php">PHP</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="categoryFilter" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">All Categories</option>
+                        <option value="web-development">Web Development</option>
+                        <option value="machine-learning">Machine Learning</option>
+                        <option value="mobile-development">Mobile Development</option>
+                        <option value="devops">DevOps</option>
+                        <option value="security">Security</option>
+                        <option value="data-science">Data Science</option>
+                        <option value="game-development">Game Development</option>
+                        <option value="blockchain">Blockchain</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Repository Type</label>
+                    <select id="typeFilter" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">All Types</option>
+                        <option value="library">Library</option>
+                        <option value="framework">Framework</option>
+                        <option value="tool">Tool</option>
+                        <option value="tutorial">Tutorial</option>
+                        <option value="boilerplate">Boilerplate</option>
+                        <option value="awesome-list">Awesome List</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Minimum Stars</label>
+                    <input type="range" id="starsFilter" min="0" max="100000" step="1000" value="1000" class="w-full">
+                    <div class="flex justify-between text-sm text-gray-500 mt-1">
+                        <span>0</span>
+                        <span id="starsValue">1,000</span>
+                        <span>100k+</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" id="clearFiltersBtn" class="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300">
+                        Clear All
+                    </button>
+                    <button type="submit" class="flex-1 btn-primary py-3 rounded-lg font-semibold">
+                        Search Repositories
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class RepoScoutApp {
+            constructor() {
+                this.repositories = [];
+                this.displayedRepos = [];
+                this.bookmarks = JSON.parse(localStorage.getItem('repoBookmarks') || '[]');
+                this.usedRepos = JSON.parse(localStorage.getItem('usedRepos') || '[]');
+                this.currentPage = 0;
+                this.itemsPerPage = 6;
+                this.isLoading = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateBookmarkCount();
+                this.loadInitialRepository();
+            }
+
+            setupEventListeners() {
+                document.getElementById('nextRepoBtn').addEventListener('click', () => this.getNextRepository());
+                document.getElementById('filterBtn').addEventListener('click', () => this.openFilterPanel());
+                document.getElementById('closeFilterBtn').addEventListener('click', () => this.closeFilterPanel());
+                document.getElementById('filterOverlay').addEventListener('click', () => this.closeFilterPanel());
+                document.getElementById('filterForm').addEventListener('submit', (e) => this.handleSearch(e));
+                document.getElementById('clearFiltersBtn').addEventListener('click', () => this.clearFilters());
+                document.getElementById('loadMoreBtn').addEventListener('click', () => this.loadMoreRepositories());
+                document.getElementById('bookmarkBtn').addEventListener('click', () => this.showBookmarks());
+                document.getElementById('starsFilter').addEventListener('input', (e) => {
+                    document.getElementById('starsValue').textContent = parseInt(e.target.value).toLocaleString();
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') this.closeFilterPanel();
+                    if (e.key === 'Enter' && e.ctrlKey) this.getNextRepository();
+                });
+            }
+
+            async loadInitialRepository() {
+                try {
+                    this.updateStatus('🔍 Finding a specific repository recommendation...', 'loading');
+                    await this.getRandomRepository();
+                } catch (error) {
+                    this.updateStatus('❌ Failed to load repository. Showing fallback content.', 'error');
+                    this.loadFallbackRepositories();
+                }
+            }
+
+            async getRandomRepository() {
+                const queries = [
+                    'react hooks stars:>5000',
+                    'typescript library stars:>10000',
+                    'python machine-learning stars:>8000',
+                    'javascript framework stars:>15000',
+                    'vue components stars:>3000',
+                    'nodejs api stars:>7000',
+                    'go microservices stars:>5000',
+                    'rust cli stars:>4000'
+                ];
+
+                const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+                
+                try {
+                    const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(randomQuery)}&sort=stars&per_page=30`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const availableRepos = data.items.filter(repo => !this.usedRepos.includes(repo.full_name));
+                        
+                        if (availableRepos.length > 0) {
+                            const randomRepo = availableRepos[Math.floor(Math.random() * availableRepos.length)];
+                            this.usedRepos.push(randomRepo.full_name);
+                            localStorage.setItem('usedRepos', JSON.stringify(this.usedRepos));
+                            
+                            const processedRepo = await this.processRepository(randomRepo);
+                            this.displaySingleRepository(processedRepo);
+                        } else {
+                            this.loadFallbackRepositories();
+                        }
+                    } else {
+                        throw new Error('GitHub API request failed');
+                    }
+                } catch (error) {
+                    console.error('Error fetching repository:', error);
+                    this.loadFallbackRepositories();
+                }
+            }
+
+            async getNextRepository() {
+                if (this.isLoading) return;
+                this.isLoading = true;
+                
+                document.getElementById('nextRepoBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading...';
+                await this.getRandomRepository();
+                
+                document.getElementById('nextRepoBtn').innerHTML = '<i class="fas fa-random mr-2"></i>Get Next Repository';
+                this.isLoading = false;
+            }
+
+            async processRepository(repo) {
+                const specificTagline = this.generateSpecificTagline(repo);
+                
+                return {
+                    id: repo.id,
+                    name: repo.name,
+                    fullName: repo.full_name,
+                    description: repo.description || 'No description available',
+                    specificTagline: specificTagline,
+                    url: repo.html_url,
+                    stars: repo.stargazers_count,
+                    forks: repo.forks_count,
+                    language: repo.language,
+                    topics: repo.topics || [],
+                    lastUpdated: new Date(repo.updated_at).toLocaleDateString(),
+                    license: repo.license ? repo.license.name : 'No license',
+                    qualityScore: this.calculateQualityScore(repo)
+                };
+            }
+
+            generateSpecificTagline(repo) {
+                const name = repo.name.toLowerCase();
+                const description = (repo.description || '').toLowerCase();
+                const language = repo.language?.toLowerCase() || '';
+                const topics = repo.topics || [];
+                
+                // Specific tagline patterns based on actual project characteristics
+                const patterns = {
+                    // Build Tools
+                    vite: "Serves React/Vue apps in 200ms with instant hot module replacement",
+                    webpack: "Bundles JavaScript modules and optimizes assets for production deployment",
+                    rollup: "Bundles ES modules into optimized packages for npm distribution",
+                    parcel: "Builds web apps with zero config - point it at HTML and it handles the rest",
+                    turbo: "Accelerates monorepo builds by caching and parallelizing tasks across packages",
+                    
+                    // React Libraries
+                    'react-query': "Caches API responses and syncs server data across React components automatically",
+                    'react-hook-form': "Handles React forms with minimal re-renders and built-in validation",
+                    'react-router': "Manages client-side routing in React apps with nested routes and code splitting",
+                    'styled-components': "Writes CSS-in-JS with tagged template literals and automatic vendor prefixing",
+                    'framer-motion': "Creates React animations with spring physics and gesture recognition",
+                    
+                    // State Management
+                    zustand: "Manages React state without boilerplate using simple store functions",
+                    redux: "Manages application state with predictable updates and time-travel debugging",
+                    mobx: "Makes state management reactive with automatic UI updates when data changes",
+                    jotai: "Provides atomic React state management with automatic dependency tracking",
+                    
+                    // UI Libraries
+                    'chakra-ui': "Provides 50+ React components with consistent design tokens and accessibility",
+                    mantine: "Delivers 100+ React components with dark theme and form validation built-in",
+                    'ant-design': "Offers enterprise-class UI components for React with internationalization",
+                    'material-ui': "Implements Google's Material Design in React with theming and customization",
+                    
+                    // Database & ORM
+                    prisma: "Generates TypeScript types from database schema and prevents SQL injection",
+                    mongoose: "Provides MongoDB object modeling with schema validation for Node.js apps",
+                    sequelize: "Maps JavaScript objects to SQL database tables with migrations and associations",
+                    drizzle: "Generates SQL queries from TypeScript code with full compile-time type safety",
+                    
+                    // Testing Tools
+                    jest: "Runs JavaScript tests with mocking, coverage reports, and parallel execution",
+                    cypress: "Runs end-to-end tests in real browsers with time-travel debugging",
+                    playwright: "Automates Chrome, Firefox, and Safari for reliable cross-browser testing",
+                    vitest: "Runs unit tests with Vite's speed and native ES modules support",
+                    
+                    // Backend Frameworks
+                    express: "Creates Node.js HTTP servers with middleware, routing, and static file serving",
+                    fastapi: "Builds Python REST APIs with automatic OpenAPI docs and request validation",
+                    nestjs: "Structures Node.js apps with decorators, dependency injection, and TypeScript",
+                    fastify: "Serves HTTP requests 2x faster than Express with JSON schema validation",
+                    
+                    // Mobile Development
+                    'react-native': "Builds native iOS and Android apps from a single React codebase",
+                    flutter: "Creates native mobile apps for iOS and Android using Dart language",
+                    ionic: "Builds hybrid mobile apps using web technologies with native device access",
+                    
+                    // DevOps & Tools
+                    docker: "Packages applications with dependencies so they run identically everywhere",
+                    kubernetes: "Orchestrates container deployment, scaling, and management across clusters",
+                    terraform: "Manages cloud infrastructure using declarative configuration files",
+                    ansible: "Automates server configuration and application deployment with YAML playbooks"
+                };
+
+                // Check for exact matches
+                for (const [key, tagline] of Object.entries(patterns)) {
+                    if (name.includes(key) || description.includes(key)) {
+                        return tagline;
+                    }
+                }
+
+                // Generate based on characteristics
+                if (topics.includes('react') || description.includes('react')) {
+                    if (description.includes('component') || name.includes('component')) {
+                        return "Provides React components with TypeScript support and consistent styling";
+                    }
+                    if (description.includes('hook') || name.includes('hook')) {
+                        return "Custom React hooks that handle complex state logic and side effects";
+                    }
+                    if (description.includes('router') || description.includes('navigation')) {
+                        return "Handles React app navigation with nested routing and history management";
+                    }
+                }
+
+                if (language === 'python' && (topics.includes('machine-learning') || description.includes('machine learning'))) {
+                    return "Python library for machine learning with scikit-learn compatibility and GPU acceleration";
+                }
+
+                if (description.includes('api') && (language === 'javascript' || language === 'typescript')) {
+                    return "REST API framework with automatic validation, documentation, and error handling";
+                }
+
+                if (description.includes('cli') || description.includes('command line')) {
+                    return "Command-line tool that automates repetitive tasks with interactive prompts";
+                }
+
+                if (description.includes('css') || topics.includes('css')) {
+                    return "CSS framework with utility classes for responsive design without custom CSS";
+                }
+
+                if (description.includes('database') && language === 'javascript') {
+                    return "Database client with connection pooling, query building, and transaction support";
+                }
+
+                if (description.includes('test') || description.includes('testing')) {
+                    return "Testing framework with assertions, mocking, and coverage reporting built-in";
+                }
+
+                // Fallback pattern based on language and description
+                const action = this.extractAction(description);
+                const benefit = this.extractBenefit(description, language);
+                
+                return `${action} ${benefit}`.trim() || 
+                       `${language || 'Tool'} project that ${description.split('.')[0] || 'solves development challenges'}`;
+            }
+
+            extractAction(description) {
+                const actionMap = {
+                    'build': 'Builds',
+                    'create': 'Creates',
+                    'generate': 'Generates',
+                    'manage': 'Manages',
+                    'handle': 'Handles',
+                    'process': 'Processes',
+                    'deploy': 'Deploys',
+                    'monitor': 'Monitors',
+                    'optimize': 'Optimizes',
+                    'validate': 'Validates'
+                };
+
+                for (const [key, action] of Object.entries(actionMap)) {
+                    if (description.includes(key)) return action;
+                }
+
+                return 'Provides';
+            }
+
+            extractBenefit(description, language) {
+                if (description.includes('fast') || description.includes('performance')) {
+                    return `high-performance ${language || 'applications'} with optimized execution`;
+                }
+                if (description.includes('simple') || description.includes('easy')) {
+                    return `simplified development workflow with minimal configuration`;
+                }
+                if (description.includes('type') || description.includes('typescript')) {
+                    return `type-safe code with compile-time error checking`;
+                }
+                if (description.includes('secure') || description.includes('security')) {
+                    return `secure applications with built-in vulnerability protection`;
+                }
+                
+                return `${language || 'development'} solutions with modern best practices`;
+            }
+
+            calculateQualityScore(repo) {
+                let score = 0;
+                
+                // Stars (max 40 points)
+                score += Math.min(repo.stargazers_count / 1000, 40);
+                
+                // Forks (max 20 points)
+                score += Math.min(repo.forks_count / 500, 20);
+                
+                // Recent activity (max 20 points)
+                const daysSinceUpdate = (Date.now() - new Date(repo.updated_at)) / (1000 * 60 * 60 * 24);
+                score += Math.max(20 - daysSinceUpdate / 30, 0);
+                
+                // Description quality (max 10 points)
+                if (repo.description && repo.description.length > 20) score += 10;
+                
+                // License (max 5 points)
+                if (repo.license) score += 5;
+                
+                // Topics (max 5 points)
+                if (repo.topics && repo.topics.length > 0) score += 5;
+                
+                return Math.min(Math.round(score), 100);
+            }
+
+            displaySingleRepository(repo) {
+                const grid = document.getElementById('repoGrid');
+                grid.innerHTML = this.createRepositoryCard(repo);
+                this.updateStatus(`✅ Found: ${repo.name} - ${repo.specificTagline}`, 'success');
+                this.setupRepositoryInteractions();
+            }
+
+            createRepositoryCard(repo) {
+                const isBookmarked = this.bookmarks.some(b => b.id === repo.id);
+                
+                return `
+                    <div class="repo-card glass-card rounded-xl p-6 hover:shadow-2xl transition-all duration-300">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-3 h-3 rounded-full bg-${this.getLanguageColor(repo.language)}"></div>
+                                <span class="text-sm font-medium text-gray-600">${repo.language || 'Unknown'}</span>
+                            </div>
+                            <button class="bookmark-btn text-gray-400 hover:text-yellow-500 transition-colors" data-repo-id="${repo.id}">
+                                <i class="fas fa-bookmark ${isBookmarked ? 'text-yellow-500' : ''}"></i>
+                            </button>
+                        </div>
+                        
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">${repo.name}</h3>
+                        
+                        <p class="specific-tagline text-green-700 bg-green-50 p-3 rounded-lg mb-4 border-l-4 border-green-500">
+                            "${repo.specificTagline}"
+                        </p>
+                        
+                        <p class="text-gray-600 mb-4 leading-relaxed">${repo.description}</p>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${repo.topics.slice(0, 3).map(topic => 
+                                `<span class="tag">${topic}</span>`
+                            ).join('')}
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 mb-4 text-center">
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="text-lg font-bold text-gray-900">${repo.stars.toLocaleString()}</div>
+                                <div class="text-xs text-gray-500">Stars</div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="text-lg font-bold text-gray-900">${repo.forks.toLocaleString()}</div>
+                                <div class="text-xs text-gray-500">Forks</div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-3">
+                                <div class="text-lg font-bold text-green-600">${repo.qualityScore}/100</div>
+                                <div class="text-xs text-gray-500">Quality</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <a href="${repo.url}" target="_blank" class="flex-1 btn-primary text-center py-2 rounded-lg font-medium text-white no-underline">
+                                <i class="fab fa-github mr-2"></i>View on GitHub
+                            </a>
+                            <button class="copy-tagline-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium" data-tagline="${repo.specificTagline}">
+                                <i class="fas fa-copy mr-1"></i>Copy Tagline
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3 text-xs text-gray-500 flex justify-between">
+                            <span>Updated: ${repo.lastUpdated}</span>
+                            <span>License: ${repo.license}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            getLanguageColor(language) {
+                const colors = {
+                    'JavaScript': 'yellow-400',
+                    'TypeScript': 'blue-500',
+                    'Python': 'green-500',
+                    'Java': 'red-500',
+                    'Go': 'cyan-500',
+                    'Rust': 'orange-500',
+                    'C++': 'purple-500',
+                    'Swift': 'orange-400',
+                    'Kotlin': 'purple-400',
+                    'PHP': 'indigo-500'
+                };
+                return colors[language] || 'gray-400';
+            }
+
+            setupRepositoryInteractions() {
+                // Bookmark buttons
+                document.querySelectorAll('.bookmark-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const repoId = parseInt(e.currentTarget.dataset.repoId);
+                        this.toggleBookmark(repoId);
+                    });
+                });
+
+                // Copy tagline buttons
+                document.querySelectorAll('.copy-tagline-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tagline = e.currentTarget.dataset.tagline;
+                        this.copyToClipboard(tagline);
+                    });
+                });
+            }
+
+            toggleBookmark(repoId) {
+                const repo = this.displayedRepos.find(r => r.id === repoId);
+                if (!repo) return;
+
+                const existingIndex = this.bookmarks.findIndex(b => b.id === repoId);
+                
+                if (existingIndex === -1) {
+                    this.bookmarks.push(repo);
+                    this.showToast('✅ Repository bookmarked!');
+                } else {
+                    this.bookmarks.splice(existingIndex, 1);
+                    this.showToast('❌ Bookmark removed');
+                }
+                
+                localStorage.setItem('repoBookmarks', JSON.stringify(this.bookmarks));
+                this.updateBookmarkCount();
+                this.setupRepositoryInteractions();
+            }
+
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showToast('📋 Tagline copied to clipboard!');
+                });
+            }
+
+            showToast(message) {
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+
+            updateBookmarkCount() {
+                document.getElementById('bookmarkCount').textContent = this.bookmarks.length;
+            }
+
+            updateStatus(message, type = 'info') {
+                const status = document.getElementById('status');
+                const iconMap = {
+                    'loading': '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>',
+                    'success': '<i class="fas fa-check-circle text-green-500 mr-3"></i>',
+                    'error': '<i class="fas fa-exclamation-circle text-red-500 mr-3"></i>',
+                    'info': '<i class="fas fa-info-circle text-blue-500 mr-3"></i>'
+                };
+
+                status.innerHTML = `
+                    <div class="flex items-center justify-center">
+                        ${iconMap[type]}
+                        <p class="text-gray-700">${message}</p>
+                    </div>
+                `;
+            }
+
+            openFilterPanel() {
+                document.getElementById('filterPanel').classList.add('open');
+                document.getElementById('filterOverlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            closeFilterPanel() {
+                document.getElementById('filterPanel').classList.remove('open');
+                document.getElementById('filterOverlay').classList.remove('open');
+                document.body.style.overflow = 'auto';
+            }
+
+            async handleSearch(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(e.target);
+                const language = document.getElementById('languageFilter').value;
+                const category = document.getElementById('categoryFilter').value;
+                const type = document.getElementById('typeFilter').value;
+                const minStars = document.getElementById('starsFilter').value;
+                
+                this.closeFilterPanel();
+                this.updateStatus('🔍 Searching repositories with your criteria...', 'loading');
+                
+                await this.searchRepositories({ language, category, type, minStars });
+            }
+
+            async searchRepositories(filters) {
+                try {
+                    let query = '';
+                    
+                    if (filters.language) query += `language:${filters.language} `;
+                    if (filters.minStars) query += `stars:>${filters.minStars} `;
+                    
+                    // Add category-specific topics
+                    const categoryTopics = {
+                        'web-development': 'topic:web',
+                        'machine-learning': 'topic:machine-learning',
+                        'mobile-development': 'topic:mobile',
+                        'devops': 'topic:devops',
+                        'security': 'topic:security'
+                    };
+                    
+                    if (filters.category && categoryTopics[filters.category]) {
+                        query += categoryTopics[filters.category] + ' ';
+                    }
+                    
+                    query += 'archived:false';
+                    
+                    const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&per_page=20`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const processedRepos = await Promise.all(
+                            data.items.map(repo => this.processRepository(repo))
+                        );
+                        
+                        this.displaySearchResults(processedRepos);
+                        this.updateStatus(`✅ Found ${processedRepos.length} repositories matching your criteria`, 'success');
+                    } else {
+                        throw new Error('Search failed');
+                    }
+                } catch (error) {
+                    this.updateStatus('❌ Search failed. Please try again.', 'error');
+                    console.error('Search error:', error);
+                }
+            }
+
+            displaySearchResults(repos) {
+                this.displayedRepos = repos;
+                const grid = document.getElementById('repoGrid');
+                grid.innerHTML = repos.map(repo => this.createRepositoryCard(repo)).join('');
+                this.setupRepositoryInteractions();
+            }
+
+            clearFilters() {
+                document.getElementById('filterForm').reset();
+                document.getElementById('starsValue').textContent = '1,000';
+            }
+
+            showBookmarks() {
+                if (this.bookmarks.length === 0) {
+                    this.updateStatus('📚 No bookmarks yet. Bookmark repositories you find interesting!', 'info');
+                    return;
+                }
+                
+                this.displaySearchResults(this.bookmarks);
+                this.updateStatus(`📚 Showing ${this.bookmarks.length} bookmarked repositories`, 'success');
+            }
+
+            loadFallbackRepositories() {
+                const fallbackRepos = [
+                    {
+                        id: 1,
+                        name: 'react-query',
+                        fullName: 'tannerlinsley/react-query',
+                        description: 'Hooks for fetching, caching and updating asynchronous data in React',
+                        specificTagline: 'Caches API responses and syncs server data across React components automatically',
+                        url: 'https://github.com/tannerlinsley/react-query',
+                        stars: 35000,
+                        forks: 1800,
+                        language: 'TypeScript',
+                        topics: ['react', 'hooks', 'data-fetching'],
+                        lastUpdated: new Date().toLocaleDateString(),
+                        license: 'MIT',
+                        qualityScore: 95
+                    },
+                    {
+                        id: 2,
+                        name: 'vite',
+                        fullName: 'vitejs/vite',
+                        description: 'Next generation frontend tooling. It\'s fast!',
+                        specificTagline: 'Serves React/Vue apps in 200ms with instant hot module replacement',
+                        url: 'https://github.com/vitejs/vite',
+                        stars: 55000,
+                        forks: 4500,
+                        language: 'TypeScript',
+                        topics: ['build-tool', 'frontend', 'vite'],
+                        lastUpdated: new Date().toLocaleDateString(),
+                        license: 'MIT',
+                        qualityScore: 98
+                    }
+                ];
+                
+                this.displaySearchResults(fallbackRepos);
+                this.updateStatus('✅ Showing curated repository recommendations with specific taglines', 'success');
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new RepoScoutApp();
+        });
+    </script>
+</body>
+</html>
+    <script id="html_badge_script1">
+        window.__genspark_remove_badge_link = "https://www.genspark.ai/api/html_badge/" +
+            "remove_badge?token=To%2FBnjzloZ3UfQdcSaYfDh1g2cd3ETdk1DFX21qPf%2FkyW9F9XOgUlY2XCzPGkWVtlgxIbNLg1YTQiyjPyUXdBP9HFwTX91%2B412DycIC60X2V055ENr90I%2Bpyi5YNsLDY8BZrkzlszlNMWTXB9tHlAfJ%2FAAxEZwWvPWmYxVYYrGv7zCKRhzNpwJWP79bj8nUVVNBynCNc1fU7UHvH%2B2pULWqHhU9cbfp5DYPqlFmUOd2JF7mBhwGxHTXQixYPpzXKx3Bc1HZlDrK8Hb64WZI14NDdQLEkPQrXVyXcCdubNsS9DZBUS%2FWVOdpeZC2rysTcPvfs1%2F%2FTLqh1%2Fq3ayhmaHN9OndHleDqQu%2FthKNKbZxxzSFiEZiFkBea84EpuGeSTreeaFo7QczOGDJozGXn2s9eje7ivMu6J%2B6P3odVN%2BwWQ2UenUHbeRj7CQ1kur9aBadi%2FSxvz8YLrBO7DCmxQc7cmxXZ3nX5AMyDQWTjTWOVDff10wjJx6shDM6BJmmZRbQhqm1cypEpTrvWGUgCu%2FIQFR%2B2WHCyqzMhmpp9H4H0%3D";
+        window.__genspark_locale = "en-US";
+        window.__genspark_token = "To/BnjzloZ3UfQdcSaYfDh1g2cd3ETdk1DFX21qPf/kyW9F9XOgUlY2XCzPGkWVtlgxIbNLg1YTQiyjPyUXdBP9HFwTX91+412DycIC60X2V055ENr90I+pyi5YNsLDY8BZrkzlszlNMWTXB9tHlAfJ/AAxEZwWvPWmYxVYYrGv7zCKRhzNpwJWP79bj8nUVVNBynCNc1fU7UHvH+2pULWqHhU9cbfp5DYPqlFmUOd2JF7mBhwGxHTXQixYPpzXKx3Bc1HZlDrK8Hb64WZI14NDdQLEkPQrXVyXcCdubNsS9DZBUS/WVOdpeZC2rysTcPvfs1//TLqh1/q3ayhmaHN9OndHleDqQu/thKNKbZxxzSFiEZiFkBea84EpuGeSTreeaFo7QczOGDJozGXn2s9eje7ivMu6J+6P3odVN+wWQ2UenUHbeRj7CQ1kur9aBadi/Sxvz8YLrBO7DCmxQc7cmxXZ3nX5AMyDQWTjTWOVDff10wjJx6shDM6BJmmZRbQhqm1cypEpTrvWGUgCu/IQFR+2WHCyqzMhmpp9H4H0=";
+    </script>
+    
+    <script id="html_notice_dialog_script" src="https://www.genspark.ai/notice_dialog.js"></script>
+    
